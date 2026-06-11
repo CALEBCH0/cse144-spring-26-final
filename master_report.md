@@ -28,9 +28,9 @@ Each team member independently developed a transfer-learning pipeline, exploring
 |---|---|---|
 | Sequoia Boubion-McKay | ConvNeXt-S/B baseline (timm, device-agnostic) | **0.8000** |
 | Kevin Chan | ConvNeXt + ViT-CLIP 3-model ensemble | **0.8700** |
-| Caleb Cho | 121-config backbone search → SigLIP2-SO400M | **0.95454** |
+| Caleb Cho | 121-config backbone search → SigLIP2-SO400M | **0.95356** |
 
-**Team best result: 0.95454 (5th place on the public leaderboard).** Source: SigLIP2-SO400M-384 with self-distillation pseudo-labeling (Caleb Cho, `caleb/`).
+**Team best result: 0.95356 — 5th place (final leaderboard).** Public leaderboard score during development: 0.95454. Source: SigLIP2-SO400M-384 with self-distillation pseudo-labeling (Caleb Cho, `caleb/`).
 
 ---
 
@@ -273,7 +273,7 @@ The 1,079-sample validation set cannot reliably identify which test-set errors a
 | Caleb | CLIP-ViT-Large/14 | 0.8823 | — | unfreeze=4, 30ep |
 | Caleb | DINOv3 ViT-L/16 | 0.9379 | — | unfreeze=4, 50ep |
 | Caleb | SigLIP2-SO400M-384 R1 | 0.9518 | — | pipeline run_004c |
-| Caleb | SigLIP2-SO400M-384 R2 | **0.9527** | **0.95454** | **5th place — final result** |
+| Caleb | SigLIP2-SO400M-384 R2 | **0.9527** | **0.95356** | **5th place — final result** |
 
 ### 4.2 Hard Class Analysis
 
@@ -377,14 +377,31 @@ python src/predict.py --out submission_vit_ensemble.csv
 ```bash
 pip install torch torchvision --index-url https://download.pytorch.org/whl/cu128
 pip install -r requirements.txt
+```
 
-# Full pipeline (train SigLIP2 across 5 folds + pseudo-label R2 + generate submission)
+**Trained weights (Google Drive):** https://drive.google.com/drive/folders/1-N_JySogMGkLquP1N02XMOGPFBNSvwUG?usp=sharing
+
+> **Note:** Due to file size constraints, only the **fold 0** checkpoint is provided. To fully replicate all 5 folds, run the pipeline from scratch with the settings below.
+
+Set the following in `config.py` to reproduce the final submission (run_004c):
+
+```python
+SELECTED_MODELS  = ["siglip2_so400m"]
+USE_PSEUDO_LABEL = True
+THRESHOLD        = 0.97
+SEED             = 42
+```
+
+Then run:
+
+```bash
+# Full pipeline: 5-fold CV + pseudo-label R2 + submission CSV
 python pipeline.py
 
 # Hyperparameter search (121 configs)
 python search.py
 
-# Kaggle submission
+# Submit directly to Kaggle
 python pipeline.py --submit --message "SigLIP2 R2 self-distillation"
 ```
 

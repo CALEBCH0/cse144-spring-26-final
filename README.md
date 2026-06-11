@@ -8,9 +8,9 @@ Team: Sequoia Boubion-McKay, Kevin Chan, Caleb Cho
 
 ## Kaggle Leaderboard
 
-**Best score: 0.95454 — 7th place (public leaderboard)**
+**Final score: 0.95356 — 5th place (final leaderboard)**
 
-![Kaggle Leaderboard](leaderboard.png)
+![Kaggle Leaderboard](final-leaderboard.png)
 
 ---
 
@@ -102,10 +102,30 @@ python pipeline.py --submit --message "SigLIP2 R2 self-distillation"
 **Google Drive (SigLIP2-SO400M-384 — final submission model):**  
 https://drive.google.com/drive/folders/1-N_JySogMGkLquP1N02XMOGPFBNSvwUG?usp=sharing
 
+> **Note:** Due to file size constraints, only the **fold 0** checkpoint is included. To fully replicate the 5-fold submission, run the pipeline from scratch using the settings below.
+
 **Google Drive (ConvNeXt-B — Sequoia's baseline):**  
 https://drive.google.com/drive/folders/1B2p5ubG2Yc7x4FiWw4xVz9-ZXNZAlHzD?usp=share_link
 
-Download the SigLIP2 checkpoint folder and place it under `caleb/` before running inference.
+#### Replicating the Final Submission (run_004c)
+
+Set the following in `caleb/config.py` before running `pipeline.py`:
+
+```python
+SELECTED_MODELS  = ["siglip2_so400m"]
+USE_PSEUDO_LABEL = True
+THRESHOLD        = 0.97
+SEED             = 42
+```
+
+Then run:
+
+```bash
+cd caleb
+python pipeline.py
+```
+
+This reproduces the SigLIP2-SO400M-384 R2 self-distillation run that achieved **0.95454** on the Kaggle public leaderboard.
 
 ---
 
