@@ -1,0 +1,126 @@
+========================================================================
+RUN CONFIGURATION
+========================================================================
+  Models          : siglip2_so400m
+  Epochs          : 10  |  Batch: 32  |  Base LR: 5e-05  |  Folds: 5  |  Seed: 0
+  Unfreeze blocks : 2  |  LoRA: False
+  Augmentation    : RandAugment=False  ColorJitter=False  RandomErasing=False
+  Mix / labels    : Mixup=False  CutMix=False  LabelSmoothing=0.05  WeightDecay=0.01
+  Training        : LLRD=True (factor=0.75)  ProgUnfreeze=False  TTA=True (n=5)  Ensemble=True
+========================================================================
+
+MODEL COMPARISON (5-fold CV, mean ± std)
+         model      train acc        val acc        precision           recall               f1       time
+------------------------------------------------------------------------------------------------------
+siglip2_so400m 0.9951±0.0057  0.9490±0.0189  0.9494±0.0164  0.9496±0.0164  0.9440±0.0181     1h38m
+
+Best model: siglip2_so400m (mean val acc 94.90%)
+
+========================================================================
+PER-CLASS F1 (mean across 5 folds) — sorted by model spread (delta)
+========================================================================
+  siglip2_so400m: 100/100 classes with F1 > 0
+
+  class    siglip2_so400m  best              delta
+  ------------------------------------------------
+  0               0.9600*  siglip2_so400m   0.0000
+  1               1.0000*  siglip2_so400m   0.0000
+  10              1.0000*  siglip2_so400m   0.0000
+  11              1.0000*  siglip2_so400m   0.0000
+  12              0.9200*  siglip2_so400m   0.0000
+  13              0.8333*  siglip2_so400m   0.0000
+  14              0.9333*  siglip2_so400m   0.0000
+  15              0.9600*  siglip2_so400m   0.0000
+  16              0.9600*  siglip2_so400m   0.0000
+  17              1.0000*  siglip2_so400m   0.0000
+  18              1.0000*  siglip2_so400m   0.0000
+  19              0.9333*  siglip2_so400m   0.0000
+  2               1.0000*  siglip2_so400m   0.0000
+  20              0.9600*  siglip2_so400m   0.0000
+  21              1.0000*  siglip2_so400m   0.0000
+  22              1.0000*  siglip2_so400m   0.0000
+  23              1.0000*  siglip2_so400m   0.0000
+  24              1.0000*  siglip2_so400m   0.0000
+  25              1.0000*  siglip2_so400m   0.0000
+  26              1.0000*  siglip2_so400m   0.0000
+  27              1.0000*  siglip2_so400m   0.0000
+  28              1.0000*  siglip2_so400m   0.0000
+  29              1.0000*  siglip2_so400m   0.0000
+  3               0.9333*  siglip2_so400m   0.0000
+  30              1.0000*  siglip2_so400m   0.0000
+  31              1.0000*  siglip2_so400m   0.0000
+  32              1.0000*  siglip2_so400m   0.0000
+  33              1.0000*  siglip2_so400m   0.0000
+  34              1.0000*  siglip2_so400m   0.0000
+  35              1.0000*  siglip2_so400m   0.0000
+  36              1.0000*  siglip2_so400m   0.0000
+  37              1.0000*  siglip2_so400m   0.0000
+  38              1.0000*  siglip2_so400m   0.0000
+  39              1.0000*  siglip2_so400m   0.0000
+  4               1.0000*  siglip2_so400m   0.0000
+  40              1.0000*  siglip2_so400m   0.0000
+  41              1.0000*  siglip2_so400m   0.0000
+  42              0.8000*  siglip2_so400m   0.0000
+  43              1.0000*  siglip2_so400m   0.0000
+  44              1.0000*  siglip2_so400m   0.0000
+  45              1.0000*  siglip2_so400m   0.0000
+  46              1.0000*  siglip2_so400m   0.0000
+  47              1.0000*  siglip2_so400m   0.0000
+  48              1.0000*  siglip2_so400m   0.0000
+  49              1.0000*  siglip2_so400m   0.0000
+  5               1.0000*  siglip2_so400m   0.0000
+  50              1.0000*  siglip2_so400m   0.0000
+  51              1.0000*  siglip2_so400m   0.0000
+  52              1.0000*  siglip2_so400m   0.0000
+  53              0.9333*  siglip2_so400m   0.0000
+  54              1.0000*  siglip2_so400m   0.0000
+  55              0.9333*  siglip2_so400m   0.0000
+  56              0.9600*  siglip2_so400m   0.0000
+  57              1.0000*  siglip2_so400m   0.0000
+  58              1.0000*  siglip2_so400m   0.0000
+  59              1.0000*  siglip2_so400m   0.0000
+  6               0.9333*  siglip2_so400m   0.0000
+  60              1.0000*  siglip2_so400m   0.0000
+  61              0.9600*  siglip2_so400m   0.0000
+  62              1.0000*  siglip2_so400m   0.0000
+  63              0.4133*  siglip2_so400m   0.0000
+  64              0.9333*  siglip2_so400m   0.0000
+  65              1.0000*  siglip2_so400m   0.0000
+  66              0.9333*  siglip2_so400m   0.0000
+  67              1.0000*  siglip2_so400m   0.0000
+  68              0.5733*  siglip2_so400m   0.0000
+  69              0.9714*  siglip2_so400m   0.0000
+  7               0.8000*  siglip2_so400m   0.0000
+  70              0.5133*  siglip2_so400m   0.0000
+  71              1.0000*  siglip2_so400m   0.0000
+  72              0.9600*  siglip2_so400m   0.0000
+  73              0.9333*  siglip2_so400m   0.0000
+  74              0.6657*  siglip2_so400m   0.0000
+  75              1.0000*  siglip2_so400m   0.0000
+  76              0.5400*  siglip2_so400m   0.0000
+  77              1.0000*  siglip2_so400m   0.0000
+  78              0.7267*  siglip2_so400m   0.0000
+  79              1.0000*  siglip2_so400m   0.0000
+  8               1.0000*  siglip2_so400m   0.0000
+  80              0.8933*  siglip2_so400m   0.0000
+  81              0.9200*  siglip2_so400m   0.0000
+  82              1.0000*  siglip2_so400m   0.0000
+  83              1.0000*  siglip2_so400m   0.0000
+  84              1.0000*  siglip2_so400m   0.0000
+  85              0.9600*  siglip2_so400m   0.0000
+  86              0.3467*  siglip2_so400m   0.0000
+  87              0.7200*  siglip2_so400m   0.0000
+  88              0.6476*  siglip2_so400m   0.0000
+  89              1.0000*  siglip2_so400m   0.0000
+  9               0.8800*  siglip2_so400m   0.0000
+  90              1.0000*  siglip2_so400m   0.0000
+  91              1.0000*  siglip2_so400m   0.0000
+  92              1.0000*  siglip2_so400m   0.0000
+  93              0.9600*  siglip2_so400m   0.0000
+  94              1.0000*  siglip2_so400m   0.0000
+  95              1.0000*  siglip2_so400m   0.0000
+  96              1.0000*  siglip2_so400m   0.0000
+  97              1.0000*  siglip2_so400m   0.0000
+  98              1.0000*  siglip2_so400m   0.0000
+  99              1.0000*  siglip2_so400m   0.0000
+

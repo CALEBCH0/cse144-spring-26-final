@@ -1,0 +1,876 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CSE 144 — Three Approaches · Caleb · Sequoia · Kevin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,300..800&family=Spline+Sans:wght@300..600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#080b11;
+  --bg2:#0c1018;
+  --panel:#11161f;
+  --panel2:#161c27;
+  --line:rgba(255,255,255,.09);
+  --line2:rgba(255,255,255,.16);
+  --ink:#eef2f8;
+  --muted:#97a2b4;
+  --faint:#5e6a7d;
+  --brand:#5cc8ff;        /* electric blue, global */
+  --sequoia:#2dd4a7;       /* teal-green, the tree */
+  --kevin:#ff8a5c;         /* coral/orange, energy */
+  --caleb:#f6c945;         /* gold, the winner */
+  --good:#7ee787;
+  --bad:#ff6b6b;
+  --r:18px;
+  --maxw:1180px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;height:100%;background:var(--bg);color:var(--ink);
+  font-family:"Spline Sans",system-ui,sans-serif;-webkit-font-smoothing:antialiased;overflow:hidden}
+h1,h2,h3,h4{font-family:"Bricolage Grotesque",serif;font-weight:700;letter-spacing:-.02em;margin:0;line-height:1.04}
+.mono{font-family:"JetBrains Mono",monospace}
+a{color:inherit}
+
+/* ---------- deck / pages ---------- */
+.deck{display:flex;height:100vh;width:100vw;overflow-x:auto;overflow-y:hidden;
+  scroll-snap-type:x mandatory;scroll-behavior:smooth;scrollbar-width:none}
+.deck::-webkit-scrollbar{display:none}
+.page{flex:0 0 100vw;height:100vh;overflow-y:auto;overflow-x:hidden;scroll-snap-align:start;
+  position:relative;scrollbar-width:thin;scrollbar-color:var(--line2) transparent}
+.page::-webkit-scrollbar{width:9px}
+.page::-webkit-scrollbar-thumb{background:var(--line2);border-radius:9px}
+.wrap{max-width:var(--maxw);margin:0 auto;padding:clamp(64px,9vh,120px) clamp(22px,5vw,64px) 140px}
+
+/* atmospheric backgrounds */
+.page{background:
+  radial-gradient(1200px 700px at 80% -10%, rgba(92,200,255,.07), transparent 60%),
+  radial-gradient(900px 600px at -10% 110%, rgba(45,212,167,.06), transparent 60%),
+  linear-gradient(180deg,var(--bg),var(--bg2));}
+.grid-overlay{position:absolute;inset:0;pointer-events:none;opacity:.5;
+  background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);
+  background-size:64px 64px;mask-image:radial-gradient(circle at 50% 30%,#000,transparent 85%)}
+.grain{position:absolute;inset:0;pointer-events:none;opacity:.05;mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+
+/* ---------- shared UI ---------- */
+.kicker{font-family:"JetBrains Mono",monospace;font-size:12px;letter-spacing:.32em;text-transform:uppercase;color:var(--faint)}
+.tag{display:inline-flex;align-items:center;gap:7px;font-family:"JetBrains Mono",monospace;font-size:11px;
+  letter-spacing:.14em;text-transform:uppercase;padding:6px 11px;border:1px solid var(--line);border-radius:999px;color:var(--muted);background:var(--panel)}
+.dot{width:7px;height:7px;border-radius:50%;display:inline-block}
+.lede{color:var(--muted);font-size:clamp(15px,1.5vw,18px);line-height:1.65;max-width:62ch}
+.card{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--line);border-radius:var(--r);padding:24px}
+.cardrow{display:grid;gap:18px}
+.scroll-hint{position:absolute;left:50%;bottom:26px;transform:translateX(-50%);font-family:"JetBrains Mono",monospace;
+  font-size:11px;letter-spacing:.25em;text-transform:uppercase;color:var(--faint);display:flex;flex-direction:column;align-items:center;gap:8px}
+.scroll-hint .bar{width:1px;height:34px;background:linear-gradient(var(--faint),transparent);animation:drip 1.8s infinite}
+@keyframes drip{0%{transform:scaleY(.2);transform-origin:top;opacity:0}40%{opacity:1}100%{transform:scaleY(1);transform-origin:top;opacity:0}}
+
+/* reveal */
+.rv{opacity:0;transform:translateY(26px);transition:opacity .7s cubic-bezier(.2,.7,.2,1),transform .7s cubic-bezier(.2,.7,.2,1)}
+.rv.in{opacity:1;transform:none}
+.rv[data-d="1"]{transition-delay:.08s}.rv[data-d="2"]{transition-delay:.16s}.rv[data-d="3"]{transition-delay:.24s}
+.rv[data-d="4"]{transition-delay:.32s}.rv[data-d="5"]{transition-delay:.4s}.rv[data-d="6"]{transition-delay:.48s}
+
+/* ---------- nav ---------- */
+.progress{position:fixed;top:0;left:0;height:3px;width:0;z-index:60;background:linear-gradient(90deg,var(--sequoia),var(--kevin),var(--caleb));transition:width .3s}
+.nav{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:60;display:flex;align-items:center;gap:6px;
+  background:rgba(12,16,24,.78);backdrop-filter:blur(14px);border:1px solid var(--line);border-radius:999px;padding:7px 8px;box-shadow:0 18px 50px rgba(0,0,0,.5)}
+.nav button{all:unset;cursor:pointer;display:flex;align-items:center;gap:8px;padding:8px 13px;border-radius:999px;color:var(--muted);
+  font-family:"JetBrains Mono",monospace;font-size:11.5px;letter-spacing:.08em;transition:.25s;white-space:nowrap}
+.nav button .idx{opacity:.6}
+.nav button:hover{color:var(--ink);background:var(--panel)}
+.nav button.active{color:#06121a;background:var(--brand)}
+.nav .arrow{width:34px;justify-content:center;font-size:15px}
+@media(max-width:720px){.nav button .lbl{display:none}.nav button{padding:9px 11px}}
+
+/* ---------- intro page ---------- */
+#hero-canvas{position:absolute;inset:0;width:100%;height:100%;opacity:.55}
+.hero-title{font-size:clamp(44px,8.5vw,118px);line-height:.92;margin:18px 0 0}
+.hero-title .grad{background:linear-gradient(100deg,var(--sequoia),var(--brand) 45%,var(--caleb));-webkit-background-clip:text;background-clip:text;color:transparent}
+.competitors{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:42px}
+@media(max-width:760px){.competitors{grid-template-columns:1fr}}
+.comp{position:relative;overflow:hidden;border-radius:var(--r);border:1px solid var(--line);padding:26px 22px;background:linear-gradient(180deg,var(--panel),var(--panel2))}
+.comp::before{content:"";position:absolute;inset:0 0 auto 0;height:3px;background:var(--c)}
+.comp .who{font-family:"Bricolage Grotesque";font-size:30px;font-weight:700}
+.comp .role{font-family:"JetBrains Mono";font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);margin-top:4px}
+.comp .score{font-family:"Bricolage Grotesque";font-size:54px;font-weight:800;margin-top:18px;color:var(--c);line-height:1}
+.comp .score small{font-size:18px;color:var(--muted);font-weight:600}
+.comp .scd{font-family:"JetBrains Mono";font-size:11px;color:var(--faint);letter-spacing:.05em;margin-top:4px}
+.comp .ribbon{position:absolute;top:14px;right:-30px;transform:rotate(38deg);background:var(--caleb);color:#1a1303;
+  font-family:"JetBrains Mono";font-size:10px;font-weight:700;letter-spacing:.12em;padding:4px 36px}
+
+.stat-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:14px}
+@media(max-width:760px){.stat-strip{grid-template-columns:repeat(2,1fr)}}
+.stat{border:1px solid var(--line);border-radius:14px;padding:16px 18px;background:var(--panel)}
+.stat b{font-family:"Bricolage Grotesque";font-size:30px;display:block;line-height:1}
+.stat span{font-family:"JetBrains Mono";font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint)}
+
+.clock{display:inline-flex;gap:10px;align-items:baseline;margin-top:8px}
+.clock .num{font-family:"Bricolage Grotesque";font-size:22px;font-weight:700;color:var(--kevin)}
+
+/* ---------- section building blocks ---------- */
+.sec-head{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap;border-bottom:1px solid var(--line);padding-bottom:20px;margin-bottom:30px}
+.big-num{font-family:"Bricolage Grotesque";font-size:clamp(40px,6vw,80px);font-weight:800;line-height:.9;color:var(--accent)}
+.two{display:grid;grid-template-columns:1.1fr .9fr;gap:24px;align-items:start}
+@media(max-width:880px){.two{grid-template-columns:1fr}}
+.three{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+@media(max-width:880px){.three{grid-template-columns:1fr}}
+h2.section{font-size:clamp(30px,4.6vw,58px)}
+h3.block{font-size:22px;margin:0 0 6px}
+.label{font-family:"JetBrains Mono";font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--accent);margin-bottom:14px;display:flex;align-items:center;gap:9px}
+.label::before{content:"";width:22px;height:1px;background:var(--accent)}
+p.body{color:var(--muted);line-height:1.7;font-size:15.5px;margin:0 0 12px}
+ul.clean{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+ul.clean li{position:relative;padding-left:24px;color:var(--muted);line-height:1.55;font-size:14.5px}
+ul.clean li::before{content:"";position:absolute;left:0;top:9px;width:8px;height:8px;border-radius:2px;background:var(--accent);transform:rotate(45deg)}
+.kv{display:flex;justify-content:space-between;gap:16px;padding:11px 0;border-bottom:1px dashed var(--line)}
+.kv:last-child{border-bottom:none}
+.kv .k{color:var(--muted);font-size:14px}
+.kv .v{font-family:"JetBrains Mono";font-size:13.5px;color:var(--ink)}
+
+/* obstacle cards */
+.obst{display:grid;gap:14px;margin-top:8px}
+.ob{border:1px solid var(--line);border-radius:14px;padding:18px 20px;background:var(--panel);position:relative;overflow:hidden}
+.ob .pp{font-family:"JetBrains Mono";font-size:10.5px;letter-spacing:.16em;text-transform:uppercase}
+.ob .prob{color:var(--bad)}.ob .sol{color:var(--good)}
+.ob h4{font-size:16.5px;margin:4px 0 8px}
+.ob p{color:var(--muted);font-size:14px;line-height:1.6;margin:0}
+.ob .fix{margin-top:11px;padding-top:11px;border-top:1px dashed var(--line)}
+
+/* repro card */
+.repro{border:1px solid var(--line);border-radius:var(--r);overflow:hidden;background:var(--panel)}
+.repro .top{display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid var(--line);background:var(--panel2)}
+.repro .top .dots{display:flex;gap:6px}.repro .top .dots i{width:10px;height:10px;border-radius:50%;display:block}
+.repro .top b{font-family:"JetBrains Mono";font-size:12px;letter-spacing:.08em;color:var(--muted)}
+.repro .body{padding:18px 20px}
+.code{font-family:"JetBrains Mono";font-size:12.5px;line-height:1.7;background:#0a0e15;border:1px solid var(--line);border-radius:12px;padding:14px 16px;color:#cbd5e6;overflow-x:auto;white-space:pre;margin-top:12px}
+.code .c{color:var(--faint)}.code .k{color:var(--brand)}.code .s{color:var(--sequoia)}
+.hwbadge{display:inline-flex;gap:7px;align-items:center;font-family:"JetBrains Mono";font-size:11px;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:5px 11px}
+
+/* svg viz frame */
+.viz{border:1px solid var(--line);border-radius:var(--r);background:radial-gradient(120% 120% at 50% 0%,rgba(255,255,255,.03),transparent),var(--panel);padding:20px;overflow:hidden}
+.viz .cap{font-family:"JetBrains Mono";font-size:11px;letter-spacing:.06em;color:var(--faint);margin-top:12px;text-align:center}
+svg{display:block;width:100%;height:auto}
+
+/* svg animations */
+@keyframes pulse{0%,100%{opacity:.35}50%{opacity:1}}
+@keyframes dash{to{stroke-dashoffset:0}}
+@keyframes flow{to{stroke-dashoffset:-200}}
+@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+.node{animation:pulse 2.6s ease-in-out infinite}
+.edge{stroke-dasharray:6 8;animation:flow 3s linear infinite}
+.grow{stroke-dasharray:600;stroke-dashoffset:600;animation:dash 1.6s ease forwards}
+
+/* accuracy comparison bars */
+.bars{display:grid;gap:18px;margin-top:8px}
+.barrow{display:grid;grid-template-columns:120px 1fr 70px;align-items:center;gap:14px}
+.barrow .nm{font-family:"JetBrains Mono";font-size:12.5px;color:var(--muted)}
+.track{height:30px;border-radius:8px;background:var(--panel2);border:1px solid var(--line);overflow:hidden;position:relative}
+.fill{height:100%;width:0;border-radius:7px;transition:width 1.4s cubic-bezier(.2,.8,.2,1)}
+.barrow .pc{font-family:"Bricolage Grotesque";font-weight:700;font-size:18px;text-align:right}
+
+/* timeline (now page) */
+.tl{position:relative;margin-top:18px;padding-left:30px}
+.tl::before{content:"";position:absolute;left:8px;top:6px;bottom:6px;width:2px;background:linear-gradient(var(--sequoia),var(--kevin),var(--caleb),var(--brand))}
+.tl .it{position:relative;padding:0 0 26px 8px}
+.tl .it::before{content:"";position:absolute;left:-29px;top:4px;width:14px;height:14px;border-radius:50%;background:var(--bg);border:2px solid var(--accent,#5cc8ff)}
+.tl .it h4{font-size:18px;margin-bottom:5px}
+.tl .it p{color:var(--muted);font-size:14.5px;line-height:1.6;margin:0}
+.future{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:8px}
+@media(max-width:760px){.future{grid-template-columns:1fr}}
+.fut{border:1px solid var(--line);border-radius:14px;padding:18px;background:var(--panel)}
+.fut .n{font-family:"Bricolage Grotesque";font-size:13px;color:var(--brand);letter-spacing:.04em}
+.fut h4{font-size:16px;margin:6px 0}
+.fut p{color:var(--muted);font-size:13.5px;line-height:1.55;margin:0}
+
+.foot{margin-top:40px;padding-top:22px;border-top:1px solid var(--line);color:var(--faint);font-family:"JetBrains Mono";font-size:11.5px;letter-spacing:.06em}
+.disclaim{color:var(--faint);font-size:12px;font-style:italic;margin-top:18px;line-height:1.6;max-width:70ch}
+</style>
+</head>
+<body>
+<div class="progress" id="progress"></div>
+
+<div class="deck" id="deck">
+
+  <!-- ============ PAGE 1 — INTRO ============ -->
+  <section class="page" id="p0" data-accent="#5cc8ff">
+    <canvas id="hero-canvas"></canvas>
+    <div class="grid-overlay"></div><div class="grain"></div>
+    <div class="wrap">
+      <div class="rv"><span class="tag"><span class="dot" style="background:var(--brand)"></span>UCSC · CSE 144 · Spring 2026 · Transfer-Learning Challenge</span></div>
+      <h1 class="hero-title rv" data-d="1">A race against the clock,<br><span class="grad">and against each other.</span></h1>
+      <p class="lede rv" data-d="2" style="margin-top:26px">
+        Three of us — <b style="color:var(--caleb)">Caleb</b>, <b style="color:var(--sequoia)">Sequoia</b>, and <b style="color:var(--kevin)">Kevin</b> —
+        set out to build the most accurate 100-class image classifier we could for the Kaggle competition.
+        We helped each other constantly, but each of us went and built a <i>completely different</i> approach.
+        At the deadline we compared scores and shipped the model with the highest accuracy. These pages walk through every approach we took.
+      </p>
+
+      <div class="clock rv" data-d="2">
+        <span class="kicker">Deadline · June 10 2026 ·</span>
+        <span class="num" id="clock">—</span>
+      </div>
+
+      <div class="competitors">
+        <div class="comp rv" data-d="3" style="--c:var(--sequoia)">
+          <div class="who">Sequoia</div><div class="role">The ConvNeXt foundation</div>
+          <div class="score" data-count="80">0<small>%</small></div>
+          <div class="scd">Kaggle · ConvNeXt-Small baseline + 5-fold ensemble</div>
+        </div>
+        <div class="comp rv" data-d="4" style="--c:var(--kevin)">
+          <div class="who">Kevin</div><div class="role">The relentless tuner</div>
+          <div class="score" data-count="82">0<small>%</small></div>
+          <div class="scd">Kaggle · 2-backbone ensemble + fixed multi-scale TTA</div>
+        </div>
+        <div class="comp rv" data-d="5" style="--c:var(--caleb)">
+          <div class="ribbon">SHIPPED</div>
+          <div class="who">Caleb</div><div class="role">The backbone hunter</div>
+          <div class="score" data-count="87">0<small>%</small></div>
+          <div class="scd">5-fold CV · DINOv2-Large, 86.84% (≈87%)</div>
+        </div>
+      </div>
+
+      <div class="stat-strip">
+        <div class="stat rv" data-d="3"><b data-count="100">0</b><span>Classes</span></div>
+        <div class="stat rv" data-d="4"><b data-count="1079">0</b><span>Train images (~10/class)</span></div>
+        <div class="stat rv" data-d="5"><b data-count="1036">0</b><span>Test images</span></div>
+        <div class="stat rv" data-d="6"><b data-count="3">0</b><span>Rival approaches</span></div>
+      </div>
+
+      <p class="disclaim rv" data-d="6">
+        Note on scoring: Sequoia's and Kevin's headline numbers are public Kaggle scores; Caleb's 86.84% is a 5-fold
+        cross-validation accuracy (the highest we measured). We're still iterating to push every number higher — this is progress so far, not a finish line.
+      </p>
+    </div>
+    <div class="scroll-hint">scroll · then swipe →<div class="bar"></div></div>
+  </section>
+
+  <!-- ============ PAGE 2 — SEQUOIA ============ -->
+  <section class="page" id="p1" data-accent="#2dd4a7">
+    <div class="grid-overlay"></div><div class="grain"></div>
+    <div class="wrap">
+      <div class="sec-head rv">
+        <div>
+          <span class="kicker" style="color:var(--sequoia)">Approach 01 · The foundation</span>
+          <h2 class="section" style="margin-top:10px">Sequoia &mdash; the<br>ConvNeXt baseline</h2>
+        </div>
+        <div style="text-align:right"><div class="big-num" style="--accent:var(--sequoia)">80%</div><div class="scd" style="font-family:'JetBrains Mono';font-size:11px;color:var(--faint)">Kaggle · ConvNeXt-Small</div></div>
+      </div>
+
+      <div class="two">
+        <div class="rv" data-d="1">
+          <div class="label" style="--accent:var(--sequoia)">The idea</div>
+          <p class="body">Sequoia built the disciplined backbone everyone else stood on: take a strong ImageNet-22k pretrained <b>ConvNeXt</b>, replace its 1,000-way head with a fresh 100-way head, and fine-tune it properly with cross-validation rather than chasing tricks. A convolutional network slides learned filters across the image, building up texture &rarr; part &rarr; object features layer by layer — a great fit when you only have ~10 images per class and need every ounce of transferred knowledge.</p>
+          <p class="body">The plan was deliberately gated: start with <span class="mono">convnext_small</span>, only add the heavier <span class="mono">convnext_base</span> and non-ConvNeXt backbones <i>if</i> the ensemble cleared ~0.80 out-of-fold accuracy. No wasted compute.</p>
+        </div>
+        <div class="viz rv" data-d="2" id="viz-cnn"></div>
+      </div>
+
+      <div class="two" style="margin-top:30px">
+        <div class="viz rv" data-d="1" id="viz-kfold"></div>
+        <div class="rv" data-d="2">
+          <div class="label" style="--accent:var(--sequoia)">Data &amp; training discipline</div>
+          <ul class="clean" style="--accent:var(--sequoia)">
+            <li>Folders <span class="mono">0</span>&ndash;<span class="mono">99</span> mapped with explicit <span class="mono">label = int(folder)</span> and an assertion that all 100 labels appear — no silent alphabetical mix-ups.</li>
+            <li>Every one of the <b>1,036</b> test images is predicted, not just the 1,000 rows in <span class="mono">sample_submission.csv</span>.</li>
+            <li><b>Stratified 5-fold CV</b> with AdamW, layer-wise LR decay, warmup + cosine schedule, gradient clipping, label smoothing, MixUp/CutMix, and EMA checkpoint selection.</li>
+            <li>Out-of-fold logits saved per fold, so the ensemble decision is evidence-based, not guesswork.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="three" style="margin-top:30px">
+        <div class="card rv" data-d="1">
+          <div class="label" style="--accent:var(--sequoia)">Canonical config</div>
+          <div class="kv"><span class="k">Seed</span><span class="v">1337</span></div>
+          <div class="kv"><span class="k">Folds</span><span class="v">5 stratified</span></div>
+          <div class="kv"><span class="k">Epochs</span><span class="v">40</span></div>
+          <div class="kv"><span class="k">Peak LR</span><span class="v">1e-3</span></div>
+          <div class="kv"><span class="k">Weight decay</span><span class="v">0.05</span></div>
+        </div>
+        <div class="card rv" data-d="2">
+          <div class="label" style="--accent:var(--sequoia)">More config</div>
+          <div class="kv"><span class="k">Layer decay</span><span class="v">0.8</span></div>
+          <div class="kv"><span class="k">Dropout</span><span class="v">0.2</span></div>
+          <div class="kv"><span class="k">Drop path</span><span class="v">0.1</span></div>
+          <div class="kv"><span class="k">EMA decay</span><span class="v">0.9998</span></div>
+          <div class="kv"><span class="k">Precision</span><span class="v">CUDA AMP</span></div>
+        </div>
+        <div class="card rv" data-d="3">
+          <div class="label" style="--accent:var(--sequoia)">What we measured</div>
+          <div class="kv"><span class="k">ConvNeXt-S OOF</span><span class="v">77.2%</span></div>
+          <div class="kv"><span class="k">ConvNeXt-S Kaggle</span><span class="v">80.0%</span></div>
+          <div class="kv"><span class="k">ConvNeXt-B OOF</span><span class="v">79.6%</span></div>
+          <div class="kv"><span class="k">288px + 15ep</span><span class="v">76.0%</span></div>
+          <div class="kv"><span class="k">Verdict</span><span class="v" style="color:var(--sequoia)">need diversity</span></div>
+        </div>
+      </div>
+
+      <div style="margin-top:40px" class="rv">
+        <div class="label" style="--accent:var(--sequoia)">Obstacles &amp; how we tackled them</div>
+        <div class="obst">
+          <div class="ob"><span class="pp prob">Obstacle</span><h4>Alphabetical label scrambling</h4>
+            <p>Reading class folders naively orders them <span class="mono">0, 1, 10, 11, 2…</span> — silently mislabeling most of the dataset.</p>
+            <div class="fix"><span class="pp sol">Fix</span><p>Force an integer mapping <span class="mono">int(folder_name)</span> and assert the labels cover exactly 0&ndash;99 before a single batch is trained.</p></div>
+          </div>
+          <div class="ob"><span class="pp prob">Obstacle</span><h4>The ConvNeXt-Small plateau</h4>
+            <p>More epochs and a 224&rarr;288 resolution bump didn't move the needle (288px actually fell to 76% OOF). Capacity wasn't the limiter.</p>
+            <div class="fix"><span class="pp sol">Fix</span><p>Diagnosed the plateau via OOF logs and pivoted strategy: the next lever is <b>architectural diversity</b> (a stronger ConvNeXt-Base, then non-ConvNeXt backbones) — directly setting up Kevin's and Caleb's branches.</p></div>
+          </div>
+          <div class="ob"><span class="pp prob">Obstacle</span><h4>Tiny dataset, constrained hardware</h4>
+            <p>~10 images/class invites overfitting, and ConvNeXt-Base only fit at batch size 8 on local Apple-silicon (MPS).</p>
+            <div class="fix"><span class="pp sol">Fix</span><p>Heavy regularization (label smoothing, MixUp/CutMix, EMA, drop-path) plus small batches with gradient clipping kept the larger model stable.</p></div>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top:40px" class="rv">
+        <div class="label" style="--accent:var(--sequoia)">Reproduce on a free GPU · Kaggle T4 ×2 / Colab free</div>
+        <div class="repro">
+          <div class="top"><span class="dots"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i></span><b>kaggle · convnext baseline</b></div>
+          <div class="body">
+            <p class="body" style="margin-bottom:8px">ConvNeXt-Small/Base at 224px fit comfortably in a single <b>T4 (16 GB)</b> with mixed precision. On <b>Kaggle's 2×T4</b> you can train one backbone per GPU in parallel; on <b>Colab free</b> run one fold at a time and checkpoint to Drive so a dropped session resumes. 5 folds × 40 epochs lands inside Kaggle's 9-hour GPU window.</p>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 4px">
+              <span class="hwbadge">▸ batch 16&ndash;32 · AMP fp16</span>
+              <span class="hwbadge">▸ num_workers 2</span>
+              <span class="hwbadge">▸ save OOF logits + ckpt per fold</span>
+            </div>
+<pre class="code"><span class="c"># Kaggle: Settings → Accelerator → GPU T4 x2, Internet ON</span>
+pip install timm
+<span class="k">python</span> src/train.py --backbone convnext_small
+<span class="k">python</span> src/train.py --backbone convnext_base
+<span class="k">python</span> src/oof_ensemble.py --backbones convnext_small,convnext_base
+<span class="k">python</span> src/predict.py --out submission.csv  <span class="c"># predicts all 1,036 test imgs</span></pre>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ PAGE 3 — KEVIN ============ -->
+  <section class="page" id="p2" data-accent="#ff8a5c">
+    <div class="grid-overlay"></div><div class="grain"></div>
+    <div class="wrap">
+      <div class="sec-head rv">
+        <div>
+          <span class="kicker" style="color:var(--kevin)">Approach 02 · Built on Sequoia's base</span>
+          <h2 class="section" style="margin-top:10px">Kevin &mdash; squeezing<br>every free point</h2>
+        </div>
+        <div style="text-align:right"><div class="big-num" style="--accent:var(--kevin)">82%</div><div class="scd" style="font-family:'JetBrains Mono';font-size:11px;color:var(--faint)">Kaggle · ensemble + TTA</div></div>
+      </div>
+
+      <div class="two">
+        <div class="rv" data-d="1">
+          <div class="label" style="--accent:var(--kevin)">The idea</div>
+          <p class="body">Kevin took Sequoia's ConvNeXt foundation and treated it as a starting line, not a finish. He <b>ensembled ConvNeXt-Small + ConvNeXt-Base</b> and went hunting for points the training run was leaving on the table. His baseline ensemble already cleared <b>81%</b> on Kaggle — one point past Sequoia's 80% — and a found-and-fixed inference bug pushed it to <b>82%</b> with zero retraining.</p>
+          <p class="body">His next move is diversity of a different kind: bolting on a <b>CLIP-pretrained Vision Transformer</b> so the ensemble blends convolutional and attention-based views of the same image.</p>
+        </div>
+        <div class="viz rv" data-d="2" id="viz-tta"></div>
+      </div>
+
+      <div class="two" style="margin-top:30px">
+        <div class="viz rv" data-d="1" id="viz-ensemble"></div>
+        <div class="rv" data-d="2">
+          <div class="label" style="--accent:var(--kevin)">The run-by-run grind</div>
+          <ul class="clean" style="--accent:var(--kevin)">
+            <li><b>Run 1 — baseline:</b> ConvNeXt-S + ConvNeXt-B ensemble, 20 epochs, default aug, single-scale inference &rarr; <b>81% Kaggle</b>.</li>
+            <li><b>Run 2 — training:</b> doubled epochs to 40, switched to <b>softer augmentation</b> tuned for a small dataset, added a 2-epoch head warmup before unfreezing the backbone. OOF: ConvNeXt-S 78%, ConvNeXt-B 80.5%.</li>
+            <li><b>Run 2&rarr;3 — the free win:</b> multi-scale TTA was <i>configured but silently never running</i>. Fixed it &rarr; <b>6 passes/image</b> (3 scales × horizontal flip), averaged &rarr; <b>82% Kaggle (+1%)</b>, no retraining.</li>
+            <li><b>Run 3 — in progress:</b> add <span class="mono">vit_base_patch16_clip_224</span> (LAION-2B), weighted 3× in the ensemble. Expected 83&ndash;85%.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="three" style="margin-top:30px">
+        <div class="card rv" data-d="1">
+          <div class="label" style="--accent:var(--kevin)">Ensemble members</div>
+          <div class="kv"><span class="k">ConvNeXt-Small</span><span class="v">conv · ×1</span></div>
+          <div class="kv"><span class="k">ConvNeXt-Base</span><span class="v">conv · ×1</span></div>
+          <div class="kv"><span class="k">ViT-B/16 CLIP</span><span class="v">attn · ×3</span></div>
+          <div class="kv"><span class="k">Pretraining</span><span class="v">IN-22k + LAION-2B</span></div>
+        </div>
+        <div class="card rv" data-d="2">
+          <div class="label" style="--accent:var(--kevin)">Inference (TTA)</div>
+          <div class="kv"><span class="k">Scales</span><span class="v">3</span></div>
+          <div class="kv"><span class="k">H-flip</span><span class="v">on / off</span></div>
+          <div class="kv"><span class="k">Passes / image</span><span class="v">6</span></div>
+          <div class="kv"><span class="k">Combine</span><span class="v">softmax avg</span></div>
+        </div>
+        <div class="card rv" data-d="3">
+          <div class="label" style="--accent:var(--kevin)">Score path</div>
+          <div class="kv"><span class="k">Run 1</span><span class="v">81%</span></div>
+          <div class="kv"><span class="k">Run 2&rarr;3 (TTA fix)</span><span class="v" style="color:var(--kevin)">82%</span></div>
+          <div class="kv"><span class="k">Run 3 expected</span><span class="v">83&ndash;85%</span></div>
+          <div class="kv"><span class="k">Hardware</span><span class="v">RTX 3080</span></div>
+        </div>
+      </div>
+
+      <div style="margin-top:40px" class="rv">
+        <div class="label" style="--accent:var(--kevin)">Obstacles &amp; how we tackled them</div>
+        <div class="obst">
+          <div class="ob"><span class="pp prob">Obstacle</span><h4>A silent, point-leaking bug</h4>
+            <p>Multi-scale test-time augmentation was fully configured — but a wiring bug meant it never actually ran. The model was scoring on single-scale inference the whole time.</p>
+            <div class="fix"><span class="pp sol">Fix</span><p>Caught it by auditing the inference path, then made TTA genuinely run 6 passes per image and average them. Pure <b>+1% for free</b>, applied to existing checkpoints — no retraining.</p></div>
+          </div>
+          <div class="ob"><span class="pp prob">Obstacle</span><h4>Aggressive augmentation hurt a tiny dataset</h4>
+            <p>Default CutMix/cropping was too violent for ~10 images per class — it was destroying signal faster than it regularized.</p>
+            <div class="fix"><span class="pp sol">Fix</span><p>Switched to a <b>softer augmentation profile</b> and added a 2-epoch head warmup so the new classifier stabilized before the backbone unfroze.</p></div>
+          </div>
+          <div class="ob"><span class="pp prob">Obstacle</span><h4>Local hardware throughput</h4>
+            <p>The data pipeline was starving the RTX 3080, leaving the GPU idle between batches.</p>
+            <div class="fix"><span class="pp sol">Fix</span><p>Tuned dataloader workers for the Ryzen 7 5800X + RTX 3080 box so the GPU stayed fed through all 40 epochs.</p></div>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top:40px" class="rv">
+        <div class="label" style="--accent:var(--kevin)">Reproduce on a free GPU · Kaggle T4 ×2 / Colab free</div>
+        <div class="repro">
+          <div class="top"><span class="dots"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i></span><b>kaggle · ensemble + multi-scale tta</b></div>
+          <div class="body">
+            <p class="body" style="margin-bottom:8px">All three backbones run at 224px and fit on a single <b>T4 (16 GB)</b>. On <b>Kaggle 2×T4</b>, train ConvNeXt on one GPU and the ViT-CLIP on the other simultaneously. TTA is inference-only and cheap (6 forward passes), so it adds almost nothing to runtime. On <b>Colab free</b>, train sequentially and cache checkpoints — then the +1% TTA win costs only a re-run of prediction.</p>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 4px">
+              <span class="hwbadge">▸ 3 backbones · all 224px</span>
+              <span class="hwbadge">▸ TTA = 6 passes, inference only</span>
+              <span class="hwbadge">▸ ViT weighted ×3</span>
+            </div>
+<pre class="code"><span class="c"># 2×T4: train conv + vit in parallel, then ensemble + TTA</span>
+<span class="k">python</span> train.py --backbone convnext_small,convnext_base --epochs 40 --aug soft
+<span class="k">python</span> train.py --backbone vit_base_patch16_clip_224
+<span class="k">python</span> predict.py --tta multiscale --scales 3 --hflip --weights "1,1,3"</pre>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ PAGE 4 — CALEB ============ -->
+  <section class="page" id="p3" data-accent="#f6c945">
+    <div class="grid-overlay"></div><div class="grain"></div>
+    <div class="wrap">
+      <div class="sec-head rv">
+        <div>
+          <span class="kicker" style="color:var(--caleb)">Approach 03 · The shipped winner</span>
+          <h2 class="section" style="margin-top:10px">Caleb &mdash; hunting the<br>right backbone</h2>
+        </div>
+        <div style="text-align:right"><div class="big-num" style="--accent:var(--caleb)">87%</div><div class="scd" style="font-family:'JetBrains Mono';font-size:11px;color:var(--faint)">5-fold CV · 86.84% · DINOv2-L</div></div>
+      </div>
+
+      <div class="two">
+        <div class="rv" data-d="1">
+          <div class="label" style="--accent:var(--caleb)">The idea</div>
+          <p class="body">Where the others perfected one backbone family, Caleb ran a <b>bake-off</b>. Six pretrained models — ResNet-50/101, ConvNeXt-Base, ViT-B/16, and <b>DINOv2 Base &amp; Large</b> — were pushed through the same 5-fold CV pipeline over <b>78 hyperparameter configs</b>. The standout was DINOv2: its <i>self-supervised</i> pretraining (no labels — it learns by matching a student network to a teacher's view of the same image) produces features so transferable that on ~10 images/class it crushed everything else.</p>
+          <p class="body">Winner: <b>DINOv2-Large</b>, only the <b>top 2 encoder layers unfrozen</b>, lr 1e-4, layer-wise LR decay 0.75, 30 epochs &rarr; <b>86.84%</b> cross-validated accuracy. That's the model we shipped.</p>
+        </div>
+        <div class="viz rv" data-d="2" id="viz-dino"></div>
+      </div>
+
+      <div class="two" style="margin-top:30px">
+        <div class="viz rv" data-d="1" id="viz-route"></div>
+        <div class="rv" data-d="2">
+          <div class="label" style="--accent:var(--caleb)">Why it won — the big levers</div>
+          <ul class="clean" style="--accent:var(--caleb)">
+            <li><b>Freeze depth is everything.</b> Unfreezing 2 layers &rarr; 84.2%; the head alone &rarr; 41%; full fine-tune &rarr; 77%. On 1k images, touching more layers causes catastrophic forgetting.</li>
+            <li><b>Higher LR + LLRD beats a timid LR.</b> 1e-4 with layer-wise decay shields the lower layers while letting the top adapt aggressively (+1.2 pts over 5e-5).</li>
+            <li><b>Augmentation hurts DINOv2.</b> Its features are already invariant; RandAugment degraded Large by &minus;0.9% and Base by &minus;0.2%. MixUp (&minus;2%) and CutMix (&minus;6%) were measured on ConvNeXt — never tested on DINOv2 directly — and disabled preemptively.</li>
+            <li><b>Class-routed ensemble.</b> DINOv2-Base wins 51/100 classes, Large wins 34; routing per-class picks the better expert and edges out Large alone (+0.37%).</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="rv" data-d="1" style="margin-top:30px">
+        <div class="label" style="--accent:var(--caleb)">The backbone bake-off · best accuracy per model</div>
+        <div class="bars">
+          <div class="barrow"><span class="nm">ResNet-50</span><div class="track"><div class="fill" data-w="6.8" style="background:#3a4456"></div></div><span class="pc">6.8%</span></div>
+          <div class="barrow"><span class="nm">ResNet-101</span><div class="track"><div class="fill" data-w="14.8" style="background:#46526a"></div></div><span class="pc">14.8%</span></div>
+          <div class="barrow"><span class="nm">ViT-B/16</span><div class="track"><div class="fill" data-w="74.4" style="background:#6f7da0"></div></div><span class="pc">74.4%</span></div>
+          <div class="barrow"><span class="nm">ConvNeXt-B</span><div class="track"><div class="fill" data-w="76.3" style="background:#2dd4a7"></div></div><span class="pc">76.3%</span></div>
+          <div class="barrow"><span class="nm">DINOv2-Base</span><div class="track"><div class="fill" data-w="85.5" style="background:#ffd56b"></div></div><span class="pc">85.5%</span></div>
+          <div class="barrow"><span class="nm">DINOv2-Large</span><div class="track"><div class="fill" data-w="86.8" style="background:linear-gradient(90deg,#f6c945,#fff0b8)"></div></div><span class="pc" style="color:var(--caleb)">86.8%</span></div>
+        </div>
+      </div>
+
+      <div class="three" style="margin-top:30px">
+        <div class="card rv" data-d="1">
+          <div class="label" style="--accent:var(--caleb)">Winning config (#72)</div>
+          <div class="kv"><span class="k">Backbone</span><span class="v">DINOv2-Large</span></div>
+          <div class="kv"><span class="k">Unfrozen layers</span><span class="v">top 2 of 24</span></div>
+          <div class="kv"><span class="k">Learning rate</span><span class="v">1e-4</span></div>
+          <div class="kv"><span class="k">LLRD</span><span class="v">0.75</span></div>
+          <div class="kv"><span class="k">Epochs</span><span class="v">30</span></div>
+        </div>
+        <div class="card rv" data-d="2">
+          <div class="label" style="--accent:var(--caleb)">Technique stack</div>
+          <div class="kv"><span class="k">Split</span><span class="v">5-fold (80/20)</span></div>
+          <div class="kv"><span class="k">Loss</span><span class="v">CE + smooth 0.05</span></div>
+          <div class="kv"><span class="k">TTA</span><span class="v">5 passes</span></div>
+          <div class="kv"><span class="k">Ensemble</span><span class="v">fold avg + routing</span></div>
+          <div class="kv"><span class="k">Mixup/CutMix</span><span class="v" style="color:var(--bad)">disabled</span></div>
+        </div>
+        <div class="card rv" data-d="3">
+          <div class="label" style="--accent:var(--caleb)">Routed ensemble</div>
+          <div class="kv"><span class="k">Base leads</span><span class="v">51 / 100</span></div>
+          <div class="kv"><span class="k">Large leads</span><span class="v">34 / 100</span></div>
+          <div class="kv"><span class="k">Routing wins</span><span class="v">15 / 100</span></div>
+          <div class="kv"><span class="k">Routed acc</span><span class="v" style="color:var(--caleb)">86.84%</span></div>
+          <div class="kv"><span class="k">Hardest class</span><span class="v">#66 (F1=0)</span></div>
+        </div>
+      </div>
+
+      <div style="margin-top:40px" class="rv">
+        <div class="label" style="--accent:var(--caleb)">Obstacles &amp; how we tackled them</div>
+        <div class="obst">
+          <div class="ob"><span class="pp prob">Obstacle</span><h4>Catastrophic forgetting</h4>
+            <p>Fine-tuning the whole network on 1k images wrecked the pretrained features — full fine-tune dropped to 77%, head-only stalled at 41%.</p>
+            <div class="fix"><span class="pp sol">Fix</span><p>The search isolated freeze depth as the single biggest lever and landed on unfreezing just the <b>top 2 encoder layers</b> — 84%+ on its own.</p></div>
+          </div>
+          <div class="ob"><span class="pp prob">Obstacle</span><h4>A hidden layer-count bug</h4>
+            <p>The freeze code hardcoded 12 layers, but DINOv2-Large has 24 — so "unfreeze top 2" was actually unfreezing the middle of the network. Two configs were silently invalid (~52%).</p>
+            <div class="fix"><span class="pp sol">Fix</span><p>Added a dynamic <span class="mono">_count_transformer_layers()</span> that scans parameter names, so freezing targets the real top layers on any model size.</p></div>
+          </div>
+          <div class="ob"><span class="pp prob">Obstacle</span><h4>Generic tricks backfired on DINOv2</h4>
+            <p>Progressive unfreezing quietly unfroze the entire model at epoch 3 (collapsing to 63%), and a Mixup collator leaked label-blending into validation predictions.</p>
+            <div class="fix"><span class="pp sol">Fix</span><p>Disabled progressive unfreeze for DINOv2 and swapped to a plain collator before <span class="mono">.predict()</span>. Lesson: a robust backbone wants <i>less</i> intervention, not more.</p></div>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top:40px" class="rv">
+        <div class="label" style="--accent:var(--caleb)">Reproduce on a free GPU · Kaggle T4 ×2 / Colab free</div>
+        <div class="repro">
+          <div class="top"><span class="dots"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i></span><b>kaggle · dinov2-large, best config</b></div>
+          <div class="body">
+            <p class="body" style="margin-bottom:8px">DINOv2-Large is big, but with only 2 layers unfrozen and fp16, the frozen backbone forward fits in a single <b>T4 (16 GB)</b> at batch 16 (drop to 8 if memory is tight). The full 78-config search is <i>not</i> free-tier friendly — but reproducing <b>config 72 alone</b> is: 5 folds × 30 epochs runs in a few hours, inside Kaggle's 9-hour GPU session. On <b>Colab free</b>, run one fold per session and checkpoint to Drive. On <b>2×T4</b>, train Base and Large in parallel, then do the class-routed merge.</p>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 4px">
+              <span class="hwbadge">▸ batch 16 · fp16</span>
+              <span class="hwbadge">▸ unfreeze=2, no aug</span>
+              <span class="hwbadge">▸ checkpoint per fold</span>
+            </div>
+<pre class="code">pip install torch torchvision <span class="c"># cu12x wheels</span>
+pip install -r requirements.txt
+<span class="k">python</span> pipeline.py  <span class="c"># DINOv2-Large config 72: lr=1e-4, LLRD=0.75, 30ep, unfreeze=2</span>
+<span class="c"># → submission_routed.csv  (Base+Large class-routed ensemble = best)</span></pre>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ PAGE 5 — NOW / NEXT ============ -->
+  <section class="page" id="p4" data-accent="#5cc8ff">
+    <div class="grid-overlay"></div><div class="grain"></div>
+    <div class="wrap">
+      <div class="rv"><span class="tag"><span class="dot" style="background:var(--brand)"></span>Still running · the race isn't over</span></div>
+      <h2 class="section rv" data-d="1" style="margin-top:14px">Where we are now &mdash;<br>and what's next.</h2>
+      <p class="lede rv" data-d="2" style="margin-top:18px">We compared every approach and shipped the highest-accuracy model — Caleb's DINOv2-Large at <b style="color:var(--caleb)">86.84%</b>. But we're treating it as a checkpoint, not a trophy. All three lines of work are still live, and we keep trading findings to push the number higher before the deadline.</p>
+
+      <div class="two" style="margin-top:34px">
+        <div class="rv" data-d="1">
+          <div class="label" style="--accent:var(--brand)">The race so far</div>
+          <div class="tl" style="--accent:var(--brand)">
+            <div class="it" style="--accent:var(--sequoia)"><h4 style="color:var(--sequoia)">Sequoia builds the base · 80%</h4><p>A disciplined 5-fold ConvNeXt pipeline establishes the foundation and proves where the plateau is.</p></div>
+            <div class="it" style="--accent:var(--kevin)"><h4 style="color:var(--kevin)">Kevin tunes it up · 81% → 82%</h4><p>Two-backbone ensemble, softer augmentation, and a fixed multi-scale TTA bug bank a free point. ViT-CLIP queued.</p></div>
+            <div class="it" style="--accent:var(--caleb)"><h4 style="color:var(--caleb)">Caleb finds the winner · 86.84%</h4><p>A 78-config bake-off crowns DINOv2-Large with a class-routed ensemble — the model we shipped.</p></div>
+            <div class="it"><h4 style="color:var(--brand)">Now · still climbing</h4><p>Folding the best ideas across all three approaches into one stack.</p></div>
+          </div>
+        </div>
+        <div class="viz rv" data-d="2" id="viz-progress"></div>
+      </div>
+
+      <div style="margin-top:34px" class="rv">
+        <div class="label" style="--accent:var(--brand)">What we're trying next</div>
+        <div class="future">
+          <div class="fut"><span class="n">01 · resolution</span><h4>DINOv2 at native 518px</h4><p>DINOv2 was pretrained at 518px but we run it at 224px, throwing away spatial detail. Testing the full-resolution input next.</p></div>
+          <div class="fut"><span class="n">02 · cross-pollinate</span><h4>One unified ensemble</h4><p>Blend Caleb's DINOv2 with Kevin's CLIP-ViT and Sequoia's ConvNeXt — convolution + attention + self-supervised, all voting together.</p></div>
+          <div class="fut"><span class="n">03 · the data ceiling</span><h4>Semi-supervised pseudo-labeling</h4><p>At ~10 images/class we're near the data ceiling; pseudo-labeling the test set or borrowing similar public data is the likely next gain.</p></div>
+          <div class="fut"><span class="n">04 · hard classes</span><h4>Rescue class #66 and friends</h4><p>A handful of classes score near zero F1 across every model. Targeted error analysis and per-class routing are on the list.</p></div>
+        </div>
+      </div>
+
+      <div class="foot rv">CSE 144 · Spring 2026 · Transfer-Learning Challenge — Caleb · Sequoia · Kevin. Progress as of June 2026; numbers will keep moving until June 10.</div>
+    </div>
+  </section>
+
+</div>
+
+<!-- ============ NAV ============ -->
+<nav class="nav" id="nav">
+  <button class="arrow" data-go="prev" aria-label="Previous">‹</button>
+  <button data-i="0" class="active"><span class="idx mono">00</span><span class="lbl">Intro</span></button>
+  <button data-i="1"><span class="idx mono">01</span><span class="lbl">Sequoia</span></button>
+  <button data-i="2"><span class="idx mono">02</span><span class="lbl">Kevin</span></button>
+  <button data-i="3"><span class="idx mono">03</span><span class="lbl">Caleb</span></button>
+  <button data-i="4"><span class="idx mono">04</span><span class="lbl">Now</span></button>
+  <button class="arrow" data-go="next" aria-label="Next">›</button>
+</nav>
+
+<script>
+/* ---------------- SVG diagram builders (original, animated) ---------------- */
+function el(t,a,kids){const e=document.createElementNS("http://www.w3.org/2000/svg",t);for(const k in a)e.setAttribute(k,a[k]);(kids||[]).forEach(c=>e.appendChild(c));return e;}
+function svg(vb){return el("svg",{viewBox:vb,fill:"none"});}
+function cap(host,txt){const d=document.createElement("div");d.className="cap";d.textContent=txt;host.appendChild(d);}
+
+/* CNN — stacked shrinking feature maps (ConvNeXt) */
+function cnn(host){
+  const s=svg("0 0 520 240");
+  s.appendChild(el("rect",{x:8,y:78,width:78,height:78,rx:6,fill:"#1b2330",stroke:"#2dd4a7","stroke-width":1.5}));
+  s.appendChild(el("text",{x:47,y:172,"text-anchor":"middle",fill:"#97a2b4","font-size":11,"font-family":"JetBrains Mono"},[txt("224×224")]));
+  const cfg=[[120,90,58,"#23463e"],[210,100,42,"#2a5a4e"],[296,108,30,"#34786a"],[376,114,20,"#43a08c"]];
+  cfg.forEach((c,i)=>{
+    for(let d=0; d<3; d++){
+      const r=el("rect",{x:c[0]+d*5,y:c[1]-d*5,width:c[2],height:c[2],rx:5,fill:c[3],stroke:"#2dd4a7","stroke-width":1,opacity:.5+ .15*d,class:"node",style:`animation-delay:${i*.25+d*.1}s`});
+      s.appendChild(r);
+    }
+  });
+  // arrows / flowing edges
+  const xs=[86,120,210,296,376,452];
+  for(let i=0;i<xs.length-1;i++){
+    s.appendChild(el("line",{x1:xs[i]+ (i?40:0),y1:120,x2:xs[i+1],y2:120,stroke:"#2dd4a7","stroke-width":1.6,class:"edge",style:`animation-delay:${i*.2}s`,"stroke-linecap":"round"}));
+  }
+  // head
+  s.appendChild(el("rect",{x:452,y:84,width:14,height:72,rx:4,fill:"#0e1620",stroke:"#2dd4a7","stroke-width":1.5}));
+  for(let k=0;k<7;k++) s.appendChild(el("circle",{cx:459,cy:94+k*9,r:2.4,fill:"#2dd4a7",class:"node",style:`animation-delay:${k*.12}s`}));
+  s.appendChild(el("text",{x:459,y:172,"text-anchor":"middle",fill:"#97a2b4","font-size":10,"font-family":"JetBrains Mono"},[txt("100")]));
+  s.appendChild(el("text",{x:260,y:30,"text-anchor":"middle",fill:"#eef2f8","font-size":13,"font-family":"Bricolage Grotesque","font-weight":700},[txt("ConvNeXt · convolutional feature hierarchy")]));
+  host.appendChild(s);cap(host,"Filters slide over the image; maps shrink and deepen into a 100-way head.");
+}
+function txt(t){return document.createTextNode(t);}
+
+/* 5-fold CV diagram */
+function kfold(host){
+  const s=svg("0 0 520 250");
+  s.appendChild(el("text",{x:260,y:24,"text-anchor":"middle",fill:"#eef2f8","font-size":13,"font-family":"Bricolage Grotesque","font-weight":700},[txt("Stratified 5-fold cross-validation")]));
+  const W=480,x0=20,cellW=W/5;
+  for(let f=0;f<5;f++){
+    const y=44+f*38;
+    for(let c=0;c<5;c++){
+      const val=(c===f);
+      s.appendChild(el("rect",{x:x0+c*cellW+3,y:y,width:cellW-6,height:28,rx:5,
+        fill:val?"#2dd4a7":"#1b2330",stroke:val?"#2dd4a7":"#2a3444","stroke-width":1,opacity:0,class:"node",style:`animation:fadeup .5s ease forwards;animation-delay:${(f*5+c)*.04}s`}));
+    }
+    s.appendChild(el("text",{x:6,y:y+19,fill:"#5e6a7d","font-size":10,"font-family":"JetBrains Mono"},[txt("F"+(f+1))]));
+  }
+  s.appendChild(el("rect",{x:x0,y:236,width:14,height:10,rx:2,fill:"#2dd4a7"}));
+  s.appendChild(el("text",{x:x0+20,y:245,fill:"#97a2b4","font-size":11,"font-family":"JetBrains Mono"},[txt("validation fold")]));
+  s.appendChild(el("rect",{x:x0+150,y:236,width:14,height:10,rx:2,fill:"#1b2330",stroke:"#444"}));
+  s.appendChild(el("text",{x:x0+170,y:245,fill:"#97a2b4","font-size":11,"font-family":"JetBrains Mono"},[txt("train folds")]));
+  host.appendChild(s);cap(host,"Each fold validates on a held-out slice; OOF logits drive the ensemble decision.");
+}
+
+/* Multi-scale TTA fan */
+function tta(host){
+  const s=svg("0 0 520 240");
+  s.appendChild(el("text",{x:260,y:24,"text-anchor":"middle",fill:"#eef2f8","font-size":13,"font-family":"Bricolage Grotesque","font-weight":700},[txt("Multi-scale TTA · 6 passes per image")]));
+  s.appendChild(el("rect",{x:24,y:96,width:54,height:54,rx:6,fill:"#241a14",stroke:"#ff8a5c","stroke-width":1.6}));
+  s.appendChild(el("text",{x:51,y:166,"text-anchor":"middle",fill:"#97a2b4","font-size":10,"font-family":"JetBrains Mono"},[txt("input")]));
+  const labels=["scale 1","scale 1 ⟲","scale 2","scale 2 ⟲","scale 3","scale 3 ⟲"];
+  for(let i=0;i<6;i++){
+    const y=30+i*32;
+    s.appendChild(el("path",{d:`M78 123 C 150 123 160 ${y+9} 230 ${y+9}`,stroke:"#ff8a5c","stroke-width":1.5,class:"edge",style:`animation-delay:${i*.15}s`}));
+    s.appendChild(el("rect",{x:232,y:y,width:120,height:20,rx:5,fill:"#241a14",stroke:"#ff8a5c","stroke-width":1,opacity:.85}));
+    s.appendChild(el("text",{x:292,y:y+14,"text-anchor":"middle",fill:"#ffb699","font-size":10,"font-family":"JetBrains Mono"},[txt(labels[i])]));
+    s.appendChild(el("path",{d:`M352 ${y+9} C 410 ${y+9} 410 123 452 123`,stroke:"#ff8a5c","stroke-width":1.2,class:"edge",style:`animation-delay:${i*.15+.3}s`,opacity:.7}));
+  }
+  s.appendChild(el("circle",{cx:470,cy:123,r:24,fill:"#ff8a5c",opacity:.18,class:"node"}));
+  s.appendChild(el("circle",{cx:470,cy:123,r:24,fill:"none",stroke:"#ff8a5c","stroke-width":1.6}));
+  s.appendChild(el("text",{x:470,y:120,"text-anchor":"middle",fill:"#ffb699","font-size":9,"font-family":"JetBrains Mono"},[txt("avg")]));
+  s.appendChild(el("text",{x:470,y:131,"text-anchor":"middle",fill:"#ffb699","font-size":9,"font-family":"JetBrains Mono"},[txt("softmax")]));
+  host.appendChild(s);cap(host,"3 scales × horizontal-flip = 6 predictions, averaged. +1% for free, no retraining.");
+}
+
+/* Ensemble averaging (conv + conv + attn) */
+function ensemble(host){
+  const s=svg("0 0 520 230");
+  s.appendChild(el("text",{x:260,y:24,"text-anchor":"middle",fill:"#eef2f8","font-size":13,"font-family":"Bricolage Grotesque","font-weight":700},[txt("Weighted ensemble · conv + conv + attention")]));
+  const mods=[["ConvNeXt-S","×1",60,"#2dd4a7"],["ConvNeXt-B","×1",115,"#2dd4a7"],["ViT-B/16 CLIP","×3",170,"#5cc8ff"]];
+  mods.forEach((m,i)=>{
+    s.appendChild(el("rect",{x:24,y:m[2]-16,width:150,height:30,rx:7,fill:"#1a1410",stroke:m[3],"stroke-width":1.4,class:"node",style:`animation-delay:${i*.3}s`}));
+    s.appendChild(el("text",{x:42,y:m[2]+4,fill:"#eef2f8","font-size":11,"font-family":"JetBrains Mono"},[txt(m[0])]));
+    s.appendChild(el("text",{x:160,y:m[2]+4,"text-anchor":"end",fill:m[3],"font-size":11,"font-family":"JetBrains Mono","font-weight":700},[txt(m[1])]));
+    s.appendChild(el("path",{d:`M174 ${m[2]} C 250 ${m[2]} 260 115 330 115`,stroke:m[3],"stroke-width":1.6,class:"edge",style:`animation-delay:${i*.2}s`}));
+  });
+  s.appendChild(el("rect",{x:330,y:92,width:90,height:46,rx:9,fill:"#241a14",stroke:"#ff8a5c","stroke-width":1.6}));
+  s.appendChild(el("text",{x:375,y:112,"text-anchor":"middle",fill:"#ffb699","font-size":11,"font-family":"JetBrains Mono"},[txt("weighted")]));
+  s.appendChild(el("text",{x:375,y:126,"text-anchor":"middle",fill:"#ffb699","font-size":11,"font-family":"JetBrains Mono"},[txt("average")]));
+  s.appendChild(el("path",{d:"M420 115 L 470 115",stroke:"#ff8a5c","stroke-width":2,class:"edge","marker-end":""}));
+  s.appendChild(el("text",{x:486,y:119,"text-anchor":"middle",fill:"#eef2f8","font-size":12,"font-family":"Bricolage Grotesque","font-weight":700},[txt("ŷ")]));
+  host.appendChild(s);cap(host,"Convolutional and attention models disagree differently — averaging cancels their errors.");
+}
+
+/* DINOv2 self-supervised student/teacher */
+function dino(host){
+  const s=svg("0 0 520 250");
+  s.appendChild(el("text",{x:260,y:24,"text-anchor":"middle",fill:"#eef2f8","font-size":13,"font-family":"Bricolage Grotesque","font-weight":700},[txt("DINOv2 · self-supervised, then freeze most of it")]));
+  // image -> two crops
+  s.appendChild(el("rect",{x:18,y:104,width:46,height:46,rx:6,fill:"#241e07",stroke:"#f6c945","stroke-width":1.6}));
+  s.appendChild(el("text",{x:41,y:166,"text-anchor":"middle",fill:"#97a2b4","font-size":9,"font-family":"JetBrains Mono"},[txt("image")]));
+  // teacher
+  s.appendChild(el("rect",{x:120,y:54,width:120,height:40,rx:8,fill:"#1f1a0a",stroke:"#f6c945","stroke-width":1.2,opacity:.7}));
+  s.appendChild(el("text",{x:180,y:78,"text-anchor":"middle",fill:"#ffe9a0","font-size":11,"font-family":"JetBrains Mono"},[txt("teacher (frozen-ish)")]));
+  // student
+  s.appendChild(el("rect",{x:120,y:160,width:120,height:40,rx:8,fill:"#1f1a0a",stroke:"#f6c945","stroke-width":1.6}));
+  s.appendChild(el("text",{x:180,y:184,"text-anchor":"middle",fill:"#ffe9a0","font-size":11,"font-family":"JetBrains Mono"},[txt("student (learns)")]));
+  s.appendChild(el("path",{d:"M64 120 C 90 120 95 74 120 74",stroke:"#f6c945","stroke-width":1.4,class:"edge"}));
+  s.appendChild(el("path",{d:"M64 134 C 90 134 95 180 120 180",stroke:"#f6c945","stroke-width":1.4,class:"edge",style:"animation-delay:.3s"}));
+  // match
+  s.appendChild(el("path",{d:"M180 94 L 180 160",stroke:"#f6c945","stroke-width":1.4,"stroke-dasharray":"4 4",class:"node"}));
+  s.appendChild(el("text",{x:248,y:131,fill:"#ffe9a0","font-size":10,"font-family":"JetBrains Mono"},[txt("match views")]));
+  s.appendChild(el("text",{x:248,y:145,fill:"#97a2b4","font-size":9,"font-family":"JetBrains Mono"},[txt("(no labels)")]));
+  // transfer block
+  s.appendChild(el("path",{d:"M240 127 L 360 127",stroke:"#5e6a7d","stroke-width":1.4,"stroke-dasharray":"2 6"}));
+  // 24 layers, top 2 unfrozen
+  const lx=372;
+  for(let i=0;i<12;i++){
+    const top=i>=10;
+    s.appendChild(el("rect",{x:lx+(i%6)*22,y:78+Math.floor(i/6)*22,width:18,height:18,rx:3,
+      fill:top?"#f6c945":"#262013",stroke:top?"#fff0b8":"#3a3320","stroke-width":1,
+      class:top?"node":"",style:top?`animation-delay:${i*.15}s`:""}));
+  }
+  s.appendChild(el("text",{x:438,y:138,"text-anchor":"middle",fill:"#97a2b4","font-size":9,"font-family":"JetBrains Mono"},[txt("24 layers · top 2 unfrozen")]));
+  s.appendChild(el("text",{x:438,y:60,"text-anchor":"middle",fill:"#ffe9a0","font-size":10,"font-family":"JetBrains Mono"},[txt("fine-tune")]));
+  host.appendChild(s);cap(host,"Pretrained label-free by matching two views; we then unfreeze only the top 2 of 24 layers.");
+}
+
+/* Class routing 51/34/15 */
+function route(host){
+  const s=svg("0 0 520 210");
+  s.appendChild(el("text",{x:260,y:24,"text-anchor":"middle",fill:"#eef2f8","font-size":13,"font-family":"Bricolage Grotesque","font-weight":700},[txt("Class-routed ensemble · 100 classes")]));
+  const segs=[["Base wins",51,"#ffd56b"],["Large wins",34,"#f6c945"],["Routing wins",15,"#5cc8ff"]];
+  let x=24;const W=472;
+  segs.forEach((g,i)=>{
+    const w=W*g[1]/100;
+    s.appendChild(el("rect",{x:x,y:54,width:w-4,height:42,rx:6,fill:g[2],opacity:0,class:"node",style:`animation:fadeup .6s ease forwards;animation-delay:${i*.25}s`}));
+    s.appendChild(el("text",{x:x+(w-4)/2,y:80,"text-anchor":"middle",fill:"#0e1620","font-size":13,"font-family":"Bricolage Grotesque","font-weight":800},[txt(g[1])]));
+    s.appendChild(el("text",{x:x+(w-4)/2,y:118,"text-anchor":"middle",fill:"#97a2b4","font-size":10,"font-family":"JetBrains Mono"},[txt(g[0])]));
+    x+=w;
+  });
+  s.appendChild(el("text",{x:260,y:160,"text-anchor":"middle",fill:"#f6c945","font-size":14,"font-family":"Bricolage Grotesque","font-weight":700},[txt("Pick the better expert per class → 86.84%")]));
+  s.appendChild(el("text",{x:260,y:182,"text-anchor":"middle",fill:"#97a2b4","font-size":11,"font-family":"JetBrains Mono"},[txt("+0.37% over DINOv2-Large alone")]));
+  host.appendChild(s);cap(host,"Base wins more than half the classes despite lower overall accuracy — routing uses both.");
+}
+
+/* Progress line chart */
+function progress(host){
+  const s=svg("0 0 520 250");
+  s.appendChild(el("text",{x:260,y:24,"text-anchor":"middle",fill:"#eef2f8","font-size":13,"font-family":"Bricolage Grotesque","font-weight":700},[txt("Accuracy across the race")]));
+  const x0=54,y0=210,W=430,H=160,lo=70,hi=90;
+  for(let g=70;g<=90;g+=5){const y=y0-(g-lo)/(hi-lo)*H;
+    s.appendChild(el("line",{x1:x0,y1:y,x2:x0+W,y2:y,stroke:"rgba(255,255,255,.08)","stroke-width":1}));
+    s.appendChild(el("text",{x:x0-8,y:y+4,"text-anchor":"end",fill:"#5e6a7d","font-size":9,"font-family":"JetBrains Mono"},[txt(g+"%")]));
+  }
+  const pts=[["Sequoia",80,"#2dd4a7"],["Kevin",82,"#ff8a5c"],["Caleb",86.84,"#f6c945"]];
+  const px=v=>x0+ v*W/(pts.length); // not used
+  const xs=[x0+70,x0+215,x0+360];
+  const coords=pts.map((p,i)=>[xs[i], y0-(p[1]-lo)/(hi-lo)*H]);
+  // line
+  let d="M"+coords[0][0]+" "+coords[0][1];for(let i=1;i<coords.length;i++)d+=" L"+coords[i][0]+" "+coords[i][1];
+  s.appendChild(el("path",{d:d,stroke:"#5cc8ff","stroke-width":2.4,class:"grow","stroke-linecap":"round","stroke-linejoin":"round"}));
+  // future dashed up
+  s.appendChild(el("path",{d:`M${coords[2][0]} ${coords[2][1]} L ${x0+W} ${y0-(89-lo)/(hi-lo)*H}`,stroke:"#5cc8ff","stroke-width":1.6,"stroke-dasharray":"5 6",opacity:.6,class:"edge"}));
+  coords.forEach((c,i)=>{
+    s.appendChild(el("circle",{cx:c[0],cy:c[1],r:7,fill:pts[i][2],class:"node",style:`animation-delay:${i*.3}s`}));
+    s.appendChild(el("text",{x:c[0],y:c[1]-14,"text-anchor":"middle",fill:pts[i][2],"font-size":13,"font-family":"Bricolage Grotesque","font-weight":800},[txt(pts[i][1]+"%")]));
+    s.appendChild(el("text",{x:c[0],y:y0+20,"text-anchor":"middle",fill:"#97a2b4","font-size":10,"font-family":"JetBrains Mono"},[txt(pts[i][0])]));
+  });
+  s.appendChild(el("text",{x:x0+W,y:y0-(89-lo)/(hi-lo)*H-10,"text-anchor":"end",fill:"#5cc8ff","font-size":11,"font-family":"JetBrains Mono"},[txt("next →")]));
+  host.appendChild(s);cap(host,"80 → 82 → 86.84, and still climbing toward the deadline.");
+}
+
+/* keyframe for fade-up used inside svg */
+const styleK=document.createElement("style");
+styleK.textContent="@keyframes fadeup{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}";
+document.head.appendChild(styleK);
+
+/* build diagrams */
+cnn(document.getElementById("viz-cnn"));
+kfold(document.getElementById("viz-kfold"));
+tta(document.getElementById("viz-tta"));
+ensemble(document.getElementById("viz-ensemble"));
+dino(document.getElementById("viz-dino"));
+route(document.getElementById("viz-route"));
+progress(document.getElementById("viz-progress"));
+
+/* ---------------- hero neural constellation ---------------- */
+(function(){
+  const c=document.getElementById("hero-canvas");if(!c)return;const ctx=c.getContext("2d");
+  let w,h,pts;const COLORS=["#2dd4a7","#ff8a5c","#f6c945","#5cc8ff"];
+  function size(){w=c.width=c.offsetWidth*devicePixelRatio;h=c.height=c.offsetHeight*devicePixelRatio;
+    const n=Math.min(70,Math.floor(w*h/90000/devicePixelRatio));
+    pts=Array.from({length:n},()=>({x:Math.random()*w,y:Math.random()*h,vx:(Math.random()-.5)*.18,vy:(Math.random()-.5)*.18,col:COLORS[Math.floor(Math.random()*COLORS.length)]}));}
+  size();window.addEventListener("resize",size);
+  function loop(){ctx.clearRect(0,0,w,h);
+    for(const p of pts){p.x+=p.vx;p.y+=p.vy;if(p.x<0||p.x>w)p.vx*=-1;if(p.y<0||p.y>h)p.vy*=-1;}
+    for(let i=0;i<pts.length;i++){for(let j=i+1;j<pts.length;j++){
+      const a=pts[i],b=pts[j],dx=a.x-b.x,dy=a.y-b.y,dist=Math.hypot(dx,dy);
+      if(dist<150*devicePixelRatio){ctx.globalAlpha=(1-dist/(150*devicePixelRatio))*.22;ctx.strokeStyle=a.col;ctx.lineWidth=devicePixelRatio*.6;
+        ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();}}}
+    for(const p of pts){ctx.globalAlpha=.85;ctx.fillStyle=p.col;ctx.beginPath();ctx.arc(p.x,p.y,1.7*devicePixelRatio,0,7);ctx.fill();}
+    requestAnimationFrame(loop);}
+  loop();
+})();
+
+/* ---------------- reveal + count-up + bars per page ---------------- */
+function animateCount(node){
+  const target=parseFloat(node.dataset.count);const dur=1100;const start=performance.now();
+  const suffixEl=node.querySelector("small");const suffix=suffixEl?suffixEl.outerHTML:"";
+  const isFloat=target%1!==0;
+  function step(t){const k=Math.min(1,(t-start)/dur);const e=1-Math.pow(1-k,3);
+    const val=isFloat?(target*e).toFixed(1):Math.round(target*e);
+    node.firstChild.nodeValue=val.toLocaleString?val.toLocaleString():val;
+    if(k<1)requestAnimationFrame(step);}
+  requestAnimationFrame(step);
+}
+document.querySelectorAll(".page").forEach(page=>{
+  const io=new IntersectionObserver((entries)=>{
+    entries.forEach(en=>{
+      if(en.isIntersecting){
+        en.target.classList.add("in");
+        en.target.querySelectorAll("[data-count]").forEach(n=>{if(!n.dataset.done){n.dataset.done=1;animateCount(n);}});
+        en.target.querySelectorAll(".fill[data-w]").forEach(f=>{if(!f.dataset.done){f.dataset.done=1;f.style.width=f.dataset.w+"%";}});
+        io.unobserve(en.target);
+      }
+    });
+  },{root:page,threshold:.18});
+  page.querySelectorAll(".rv").forEach(n=>io.observe(n));
+});
+// first page reveal immediately
+setTimeout(()=>{document.querySelectorAll("#p0 .rv").forEach(n=>n.classList.add("in"));
+  document.querySelectorAll("#p0 [data-count]").forEach(n=>{n.dataset.done=1;animateCount(n);});},250);
+
+/* ---------------- navigation ---------------- */
+const deck=document.getElementById("deck");
+const pages=[...document.querySelectorAll(".page")];
+const navBtns=[...document.querySelectorAll(".nav button[data-i]")];
+const prog=document.getElementById("progress");
+let cur=0;
+function goto(i){i=Math.max(0,Math.min(pages.length-1,i));cur=i;
+  deck.scrollTo({left:i*window.innerWidth,behavior:"smooth"});setActive(i);}
+function setActive(i){navBtns.forEach(b=>b.classList.toggle("active",+b.dataset.i===i));
+  prog.style.width=((i)/(pages.length-1)*100)+"%";
+  pages.forEach((p,idx)=>{if(idx===i){const a=p.dataset.accent;document.documentElement.style.setProperty("--brand-active",a);prog.style.background=`linear-gradient(90deg,var(--sequoia),var(--kevin),var(--caleb))`;}});}
+navBtns.forEach(b=>b.addEventListener("click",()=>goto(+b.dataset.i)));
+document.querySelector('[data-go="prev"]').addEventListener("click",()=>goto(cur-1));
+document.querySelector('[data-go="next"]').addEventListener("click",()=>goto(cur+1));
+let st;deck.addEventListener("scroll",()=>{clearTimeout(st);st=setTimeout(()=>{
+  const i=Math.round(deck.scrollLeft/window.innerWidth);if(i!==cur){cur=i;setActive(i);}},90);});
+window.addEventListener("keydown",e=>{
+  if(e.key==="ArrowRight"){const p=pages[cur];if(p.scrollTop+p.clientHeight>=p.scrollHeight-4||e.shiftKey){goto(cur+1);e.preventDefault();}else goto(cur+1),e.preventDefault();}
+  if(e.key==="ArrowLeft"){goto(cur-1);e.preventDefault();}
+});
+window.addEventListener("resize",()=>deck.scrollTo({left:cur*window.innerWidth}));
+setActive(0);
+
+/* countdown clock */
+(function(){
+  const due=new Date("2026-06-10T23:59:00");const cl=document.getElementById("clock");
+  function tick(){const ms=due-new Date();if(ms<=0){cl.textContent="deadline reached";return;}
+    const d=Math.floor(ms/864e5),hh=Math.floor(ms%864e5/36e5),mm=Math.floor(ms%36e5/6e4);
+    cl.textContent=`${d}d ${hh}h ${mm}m left`;}
+  tick();setInterval(tick,30000);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,112 @@
+# CSE 144 Final Project — resolved configuration (single source of truth)
+# Edit values here; src/train.py and src/predict.py read this file.
+# Every hyperparameter that affects a result lives here so an ablation = one flag/value flip.
+
+seed: 1337                 # global SEED (python/numpy/torch). Used for splits + init.
+
+data:
+  train_dir: Data/train
+  test_dir: Data/test
+  sample_submission: Data/sample_submission.csv
+  num_classes: 100
+
+cv:
+  n_splits: 5              # StratifiedKFold. 4-image classes warn (not error); logged.
+  shuffle: true
+
+# ---------------------------------------------------------------------------
+# Backbones. Keyed by a short alias used on the train.py CLI (--backbone KEY).
+# `timm` is the exact pretrained tag; `img_size` overrides the checkpoint native
+# size when set (else the model's native size is used). Per-backbone overrides of
+# any train.* key may be placed under `overrides:`.
+# ---------------------------------------------------------------------------
+backbones:
+  convnext_small:
+    timm: convnext_small.fb_in22k_ft_in1k   # primary; strong 21k->1k natural-image transfer
+    img_size: 224
+  convnext_base:
+    timm: convnext_base.fb_in22k_ft_in1k    # first high-yield gate after ConvNeXt-S plateau
+    img_size: 224
+    overrides: { batch_size: 16 }
+  convnext_small_384:
+    timm: convnext_small.fb_in22k_ft_in1k_384  # high-res pass (matched 384 checkpoint)
+    img_size: 384
+    overrides: { batch_size: 16 }
+  effv2s:
+    timm: tf_efficientnetv2_s.in21k_ft_in1k # different conv family (native 300)
+    img_size: 300
+    overrides: { batch_size: 24 }
+  vit_base:
+    timm: vit_base_patch16_224.augreg_in21k_ft_in1k  # transformer, clean 224-native
+    img_size: 224
+  eva02_small:
+    timm: eva02_small_patch14_224.mim_in22k # transformer alt (MIM 21k features; head replaced)
+    img_size: 224
+  vit_base_clip:
+    timm: vit_base_patch16_clip_224.laion2b_ft_in12k_in1k  # CLIP-pretrained ViT-B, strong open-vocab features
+    img_size: 224
+    overrides:
+      lr: 3.0e-4           # lower peak LR for ViT (more sensitive to large updates)
+      layer_decay: 0.65    # stronger LLRD for ViT (more layers, earlier ones need more protection)
+      head_warmup_epochs: 5
+      batch_size: 16
+
+# Current gated ensemble target: add EffV2-S / ViT-B only if this clears ~0.80 OOF.
+ensemble: [convnext_small, convnext_base, vit_base_clip]
+
+train:
+  batch_size: 32
+  epochs: 40
+  warmup_epochs: 4
+  lr: 1.0e-3              # peak head LR (AdamW); backbone scaled down by LLRD
+  min_lr: 1.0e-6
+  weight_decay: 0.05
+  layer_decay: 0.8        # layer-wise LR decay (LLRD); backbone < head
+  head_warmup_epochs: 2   # optional head-only warmup before unfreezing backbone (0 = off)
+  drop_rate: 0.2          # classifier dropout
+  drop_path_rate: 0.1     # stochastic depth
+  grad_clip: 1.0
+  amp: true               # auto-disabled off CUDA
+  ema: true
+  ema_decay: 0.9998
+  label_smoothing: 0.1
+  early_stop_patience: 1000 # effectively DISABLED: with cosine LR the best epoch is in the
+                            # low-LR tail (fold 0 won at full 40 ep; early-stopped folds lost
+                            # ~1-2%). Best-EMA-val ckpt is still selected across all epochs.
+  num_workers: 6
+
+  # Augmentation (timm create_transform). Eval = resize->center-crop at img_size.
+  aug:
+    rand_augment: rand-m9-mstd0.5-inc1
+    hflip: 0.5
+    color_jitter: 0.4
+    reprob: 0.25          # RandomErasing prob
+    train_crop_min: 0.4   # RandomResizedCrop lower scale bound
+
+  # MixUp + CutMix (timm.data.Mixup) -> SoftTargetCrossEntropy
+  mixup:
+    enabled: true
+    mixup_alpha: 0.2
+    cutmix_alpha: 1.0
+    prob: 1.0             # apply mixup/cutmix on this fraction of batches
+    switch_prob: 0.5      # prob of switching to cutmix when both active
+    mode: batch
+
+  # Class-imbalance handling — ABLATION, off by default; enable + measure OOF.
+  sampler:
+    weighted: false       # WeightedRandomSampler with sqrt-inverse-freq weights
+
+inference:
+  tta:
+    hflip: true
+    scales: [0.875, 1.0, 1.14]  # multi-scale TTA; scale maps to crop_pct = base_crop_pct / scale
+  temperature: 1.0        # OOF-tuned softmax temperature (1.0 = off)
+  weight_by_oof: false    # weight ensemble members by their OOF accuracy
+  backbone_weights:       # explicit per-backbone ensemble weights (ignored if weight_by_oof: true)
+    convnext_small: 1.0
+    convnext_base: 1.0
+    vit_base_clip: 3.0
+
+output:
+  ckpt_dir: checkpoints   # per-backbone/per-fold ckpts + OOF preds + resolved config
+  log_dir: logs

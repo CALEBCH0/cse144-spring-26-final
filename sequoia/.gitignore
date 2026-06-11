@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+
+# Training artifacts (weights go to Google Drive, not git)
+checkpoints/
+checkpoints_local/
+checkpoints_local_soft_aug/
+logs/
+*.pt
+*.npz
+submission.csv
+
+# Data (competition data is mounted on Kaggle; not committed)
+Data/
+Data.zip
+*.zip
+.claude
+
+# Internal working docs (kept local, not exposed on the public repo)
+info/
+claude-convo-chat.md
+codex-convo-agent.md
+log.md
+colab/
+
+# OS
+.DS_Store
