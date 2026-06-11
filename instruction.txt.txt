@@ -1,0 +1,8 @@
+For final project submission on Canvas, every team member needs to submit a public Github repository link to Canvas:
+
+
+1. The public GitHub repository must include all source code, a project report in PDF format, and a Google drive link to the trained model weights.
+2. The repository README should clearly document how to run both training and inference using the provided model.
+
+3. It must also include a screenshot showing your team’s position on the Kaggle leaderboard, with the screenshot referenced directly in the README.
+4. The report with instructions, experimental setup, etc. Please refer to the “sample report”.
